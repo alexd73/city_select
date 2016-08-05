@@ -1,0 +1,9 @@
+name = City Select
+description = редирект на город в зависимости от IP пользователя и блок выбора.
+core = 7.x
+version = 7.x.0.1;
+dependencies[] = smart_ip
+dependencies[] = domain
+files[] = city_select.tools.inc
+files[] = city_select.admin.inc
+files[] = city_select.blocks.inc
