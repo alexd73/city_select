@@ -1,29 +1,35 @@
 <?php
 /**
-* @file
-* редирект на город в зависимости от IP пользователя и блок выбора.
-*/
+ * @file
+ * редирект на город в зависимости от IP пользователя и блок выбора.
+ */
+define('YOUR_MODULE_PATH', drupal_get_path('module', 'city_select'));
+
 require_once __DIR__ . '/city_select.vars.inc';
 require_once __DIR__ . '/city_select.blocks.inc';
+
 
 /**
  * Implements hook_init().
  */
 function city_select_init() {
-    global $region_domain, $_domain, $user;
-    //if (function_exists('drush_main') || path_is_admin(current_path())) {
-    if (function_exists('drush_main') || path_is_admin(current_path()) || in_array('administrator', array_values($user->roles))) {
-        return;
-    };
-    $location = city_select_get_location();
-    $region = $region_domain[$location['region_code']];
-    if ($region) {
-        $domain = domain_lookup($region['domain_id']);
-        if ($_domain['domain_id'] <> $domain['domain_id']){
-            $path = $domain['path'] . city_select_get_domain_path();
-            drupal_goto($path);
-        }
+  global $region_domain, $_domain, $user;
+  //if (function_exists('drush_main') || path_is_admin(current_path())) {
+  if (function_exists('drush_main') || // Запускаем из drush
+    $_COOKIE['manual_region'] || // в куках стоит запрет переадресации
+    path_is_admin(current_path()) || // на страницах администратора
+    in_array('administrator', array_values($user->roles))) { // залогинен с правами админа
+    return; // не переадресовываем
+  };
+  $location = city_select_get_location();
+  $region = $region_domain[$location['region_code']];
+  if ($region) {
+    $domain = domain_lookup($region['domain_id']);
+    if ($_domain['domain_id'] <> $domain['domain_id']){
+      $path = $domain['path'] . city_select_get_domain_path();
+      drupal_goto($path);
     }
+  }
 }
 
 /**
@@ -32,77 +38,78 @@ function city_select_init() {
  * @return string
  */
 function city_select_get_domain_path($path = NULL, $domain_id = NULL) {
-    if (!$path) {
-        $path = current_path();
-    }
-    // если главная - возвращаем пустую строку
-    if (drupal_is_front_page()) {
-        return '';
-    }
+  if (!$path) {
+    $path = current_path();
+  }
+  // если главная - возвращаем пустую строку
+  if (drupal_is_front_page()) {
+    return '';
+  }
 // dpm($path, $domain_id . ' path');
-    $arg = explode('/', $path);
-    // проверка на существование пути идет только на нодах, все остальные
-    // случаи просто используют старый путь
-    if ($arg['0'] == 'node') {
-        $nid = $arg['1'];
-    } else {
-        return $path;
-    }
-    // получаем текущий псевдоним (от модуля domain path!!!) в $current_alias,
-    // Если получить не удалось, значит domain path не назначен - присваиваем $path
-    // для другого домена с таким псевдонимом может быть другая нода.
+  $arg = explode('/', $path);
+  // проверка на существование пути идет только на нодах, все остальные
+  // случаи просто используют старый путь
+  if ($arg['0'] == 'node') {
+    $nid = $arg['1'];
+  } else {
+    return drupal_get_path_alias($path);
+  }
+  
+  // получаем текущий псевдоним (от модуля domain path!!!) в $current_alias,
+  // Если получить не удалось, значит domain path не назначен - присваиваем $path
+  // для другого домена с таким псевдонимом может быть другая нода.
 
-    // drupal_static_reset('domain_path_lookup_path');
+  drupal_static_reset('domain_path_lookup_path');
 
-    if (!$current_alias = domain_path_lookup_path('alias', $path)) {
-        $current_alias = $path;
-    }
+  if (!($current_alias = domain_path_lookup_path('alias', $path))) {
+    $current_alias = $path;
+  }
 //    dpm($current_alias, $domain_id . ' current_alias');
-    if (!$domain_id) {
-        global $_domain; // Текущий домен
-        $domain_id = $_domain['domain_id'];
-    }
+  if (!$domain_id) {
+    global $_domain; // Текущий домен
+    $domain_id = $_domain['domain_id'];
+  }
 //    dpm($nid, $domain_id . ' nid');
-    if ($request_uri = domain_path_lookup_path('source', $current_alias, $domain_id)) {
-        $request_uri = $current_alias;
+  if ($request_uri = domain_path_lookup_path('source', $current_alias, $domain_id)) {
+    $request_uri = $current_alias;
 //        dpm($request_uri, $domain_id . ' путь найден domain path');
-    } elseif (city_select_get_domain_access($nid, $domain_id)) {
-        domain_path($domain_id, $request_uri, $opt, $current_alias);
+  } elseif (city_select_get_domain_access($nid, $domain_id)) {
+    domain_path($domain_id, $request_uri, $opt, $current_alias);
 //        dpm($request_uri, $domain_id . ' путь найден по nid и доступ в домене есть');
-    } else {
-        $request_uri = '';
+  } else {
+    $request_uri = '';
 //        dpm($request_uri, $domain_id . ' путь не найден - на главную');
-    }
-    return $request_uri;
+  }
+  return $request_uri;
 }
 
 /**
  * Implements hook_menu().
  */
 function city_select_menu() {
-    $items['admin/structure/city_select'] = array(
-      'title' => 'City Select setting',
-      'description' => t('City select settings'),
-      'page callback' => 'city_select_domain_list',
-      'access arguments' => array('administer site configuration'),
-      'file' => 'city_select.admin.inc',
-    );
-    $items['admin/structure/city_select/list'] = array(
-      'title'  => 'Cities list',
-      'type'   => MENU_DEFAULT_LOCAL_TASK,
-      'weight' => 1,
-    );
+  $items['admin/structure/city_select'] = array(
+    'title' => 'City Select setting',
+    'description' => t('City select settings'),
+    'page callback' => 'city_select_domain_list',
+    'access arguments' => array('administer site configuration'),
+    'file' => 'city_select.admin.inc',
+  );
+  $items['admin/structure/city_select/list'] = array(
+    'title'  => 'Cities list',
+    'type'   => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 1,
+  );
 
-    // domain edit form
-    $items['admin/structure/city_select/%domain/edit'] = array(
-      'title'            => 'Edit Domain',
-      'page callback'    => 'drupal_get_form',
-      'page arguments'   => array('city_select_domain_form', 4),
-      'access arguments' => array('administer site configuration'),
-      'type'             => MENU_CALLBACK,
-      'file' => 'city_select.admin.inc',
-    );
-    return $items;
+  // domain edit form
+  $items['admin/structure/city_select/%domain/edit'] = array(
+    'title'            => 'Edit Domain',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('city_select_domain_form', 4),
+    'access arguments' => array('administer site configuration'),
+    'type'             => MENU_CALLBACK,
+    'file' => 'city_select.admin.inc',
+  );
+  return $items;
 }
 
 
@@ -114,13 +121,13 @@ function city_select_menu() {
  * Данная реализация проверена и работает с настройкой Use Maxmind binary database
  */
 function city_select_get_location($ip = NULL) {
-    if (!$ip) {
-        $location = smart_ip_get_current_visitor_location_data();
-        $ip = $location['ip_address'];
-    }
-    $location = smart_ip_get_location($ip);
+  if (!$ip) {
+    $location = smart_ip_get_current_visitor_location_data();
+    $ip = $location['ip_address'];
+  }
+  $location = smart_ip_get_location($ip);
 
-    return $location;
+  return $location;
 }
 
 /**
@@ -130,17 +137,17 @@ function city_select_get_location($ip = NULL) {
  * @return bool
  */
 function city_select_get_domain_access($nid, $domain_id=NULL) {
-    global $_domain;
-    if (!module_exists('domain')) {
-        drupal_set_message('Ошибка выполнения! Включите Domain Access', 'error');
-        return FALSE;
-    }
-    if (!$domain_id) {
-        $domain_id = $_domain['domain_id'];
-    }
-    $domain_access = db_query(
-      "SELECT gid FROM {domain_access} WHERE nid = :nid and gid = :gid",
-      array(':nid' => $nid, ':gid' => $domain_id))->fetchField();
+  global $_domain;
+  if (!module_exists('domain')) {
+    drupal_set_message('Ошибка выполнения! Включите Domain Access', 'error');
+    return FALSE;
+  }
+  if (!$domain_id) {
+    $domain_id = $_domain['domain_id'];
+  }
+  $domain_access = db_query(
+    "SELECT gid FROM {domain_access} WHERE nid = :nid and gid = :gid",
+    array(':nid' => $nid, ':gid' => $domain_id))->fetchField();
 //    dpm($domain_access, $nid);
-    return  ($domain_access) ? TRUE : FALSE;
+  return  ($domain_access) ? TRUE : FALSE;
 }

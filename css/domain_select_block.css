@@ -1,0 +1,55 @@
+#block-city-select-domain-select{
+    padding: 0px 7px 0 8px;
+    /*margin-top: -10px;*/
+}
+ul.regions {
+    margin: 10px 0;
+    padding-left: 0;
+}
+
+ul.regions li {
+    float: left;
+    list-style: none;
+    width: 50%;
+    text-transform: uppercase;
+}
+ul.regions li:nth-child(even) {
+    text-align: right;
+}
+
+ul.regions li a {
+    font-size: 14px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+ul.regions li a.active {
+    color: #9e3a5a;
+    border-bottom: 1px solid #9e3a5a;
+}
+ul.regions li a:hover {
+    color: #9e3a5a;
+
+}
+
+
+/**
+ * Markup free clearing.
+ *
+ * @see http://perishablepress.com/press/2009/12/06/new-clearfix-hack
+ */
+.clearfix:after {
+    content: ".";
+    display: block;
+    height: 0;
+    clear: both;
+    visibility: hidden;
+}
+/* IE6 */
+* html .clearfix {
+    height: 1%;
+}
+/* IE7 */
+*:first-child + html .clearfix {
+    min-height: 1%;
+}
