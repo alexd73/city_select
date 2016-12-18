@@ -14,16 +14,20 @@ require_once __DIR__ . '/city_select.blocks.inc';
  */
 function city_select_init() {
   global $region_domain, $_domain, $user;
-  //if (function_exists('drush_main') || path_is_admin(current_path())) {
   if (function_exists('drush_main') || // Запускаем из drush
-    $_COOKIE['manual_region'] || // в куках стоит запрет переадресации
+    isset($_COOKIE['manual_region']) || // вручную выбран регион - запрет переадресации
     path_is_admin(current_path()) || // на страницах администратора
     in_array('administrator', array_values($user->roles))) { // залогинен с правами админа
     return; // не переадресовываем
   };
   $location = city_select_get_location();
-  $region = $region_domain[$location['region_code']];
-  if ($region) {
+  if (isset($location['region_code'])) {
+    $region_code = $location['region_code'];
+    if (isset($region_domain[$region_code])){
+      $region = $region_domain[$region_code];
+    }
+  }
+  if (isset($region)) {
     $domain = domain_lookup($region['domain_id']);
     if ($_domain['domain_id'] <> $domain['domain_id']){
       $path = $domain['path'] . city_select_get_domain_path();
@@ -38,6 +42,7 @@ function city_select_init() {
  * @return string
  */
 function city_select_get_domain_path($path = NULL, $domain_id = NULL) {
+  global $_domain; // Текущий домен
   if (!$path) {
     $path = current_path();
   }
@@ -54,7 +59,7 @@ function city_select_get_domain_path($path = NULL, $domain_id = NULL) {
   } else {
     return drupal_get_path_alias($path);
   }
-  
+
   // получаем текущий псевдоним (от модуля domain path!!!) в $current_alias,
   // Если получить не удалось, значит domain path не назначен - присваиваем $path
   // для другого домена с таким псевдонимом может быть другая нода.
@@ -66,7 +71,6 @@ function city_select_get_domain_path($path = NULL, $domain_id = NULL) {
   }
 //    dpm($current_alias, $domain_id . ' current_alias');
   if (!$domain_id) {
-    global $_domain; // Текущий домен
     $domain_id = $_domain['domain_id'];
   }
 //    dpm($nid, $domain_id . ' nid');

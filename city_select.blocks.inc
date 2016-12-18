@@ -70,7 +70,6 @@ function city_select_block_view($delta = '') {
             )
           ),
         );
-        dpm($blocks);
     }
     return $blocks;
 }
